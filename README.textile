@@ -1,0 +1,71 @@
+h1. SyncSink.wasm
+
+SyncSink.wasm is webapplication to synchronize media files with shared audio. SyncSink matches and aligns shared audio and determines offsets in seconds. With these precise offsets it becomes trival to sync media files.
+
+SyncSink is, for example, used to synchronize video files: when you have many video captures of the same event, the audio attached to these video captures is used to align and sync multiple (independently operated) cameras. Evidently, SyncSink can also synchronize audio captured from many (independent) microphones if some environmental sound is shared the recordings.
+
+
+<div align="center">
+!./media/media_sync_recording.apng(Synchronizing audio with the SyncSink user interface)!
+<small>Fig. Synchronizing audio with the SyncSink user interface.</small></div>
+
+
+SyncSink.wasm is based on the Java SyncSink software. SyncSink can also be used for synchronization of data-streams. For those applications please see the article titled "Synchronizing Multimodal Recordings Using Audio-To-Audio Alignment":http://0110.be/posts/Synchronizing_Multimodal_Recordings_Using_Audio-To-Audio_Alignment_-_In_Journal_on_Multimodal_User_Interfaces.
+
+
+h3(#sync). How does SyncSink.wasm synchronize media files?
+
+The first step is to extract, downmix and resample audio from the incoming media file. This is done with a wasm version of "ffmpeg":https://ffmpeg.org/. If a video file with multiple audio streams enters the system, the first audio stream is used for synchronization.
+
+The next step is to extract fingerprints. These fingerprints are extracted from the reference media file and all other media files. By aligning the fingerprints of the other files with the reference file, a rough offset is determined. The rough offset determines how much each 'other' file needs to shift to match the reference. The rough offset is accurate to about 8ms.
+
+The last step improves the rough offset by calculating the crosscovariance between the refrence and other files. Since we already have a rough offset we know where audio is likely to match so we can reduce the amount of crosscovariance calculations, which are computationally intensive. In the ideal case the crosscovariance is stable and improves the offset up to audio-sample accuracy.
+
+h3(#syncsink). How to use SyncSink.wasm in the browser
+
+To use go to the "SyncSink.wasm website":https://0110.be/attachment/cors/sync/sync.html and drag and drop your media files. Similarly to the screencapture above. If the same audio is found in the various media files a timebox plot appears with a calculated offset. The JSON file provides more insights in the found matches.
+
+
+h3(#syncsink). How to use SyncSink.wasm in Node
+
+There is also a command line version of SyncSink.wasm. To see an example go to the @examples/node@ directory and call the following from the command line.
+
+@node --no-experimental-fetch sync.js@
+
+
+h2(#read). Further Reading
+
+Some relevant reading material concerning SyncSink.wasm.
+
+# Six, Joren and Leman, Marc "__Synchronizing Multimodal Recordings Using Audio-To-Audio Alignment__" (2015)
+# Six, Joren and Leman, Marc "__Panako - A Scalable Acoustic Fingerprinting System Handling Time-Scale and Pitch Modification__":http://www.terasoft.com.tw/conf/ismir2014/proceedings/T048_122_Paper.pdf (2014)
+# Wang, Avery L. __An Industrial-Strength Audio Search Algorithm__ (2003)
+# Ellis, Dan and Whitman, Brian and Porter, Alastair __Echoprint - An Open Music Identification Service__ (2011)
+# Sonnleitner, Reinhard  and Widmer, Gerhard __Quad-based Audio Fingerprinting Robust To Time And Frequency Scaling__ (2014)
+
+
+h2(#credits). Credits
+
+The SyncSink.wasm software was developed at "IPEM, Ghent University":http://www.ipem.ugent.be/ by Joren Six.
+
+* "SyncSink":https://github.com/JorenSix/SyncSink The original SyncSink Java software this work is based off.
+* "PFFFT":https://bitbucket.org/jpommier/pffft/src/default/  A pretty fast FFT library. BSD licensed.
+* "PFFFT.wasm":https://github.com/JorenSix/pffft.wasm A wasm version of pffft.
+* "ffmpeg":https://ffmpeg.org/ __'A complete, cross-platform solution to record, convert and stream audio and video.'__
+* "ffmpeg.audio.wasm":https://github.com/JorenSix/ffmpeg.audio.wasm A wasm version of ffmpeg with a focus on audio extraction.
+* "chart.js":https://www.chartjs.org A javascript charting library used in the UI.  
+
+If you use the synchronization algorithms for research purposes, please cite the following work:
+
+bc. @article{six2015multimodal,
+  author      = {Joren Six and Marc Leman},
+  title       = {{Synchronizing Multimodal Recordings Using Audio-To-Audio Alignment}},
+  issn        = {1783-7677},
+  volume      = {9},
+  number      = {3},
+  pages       = {223-229},
+  doi         = {10.1007/s12193-015-0196-1},
+  journal     = {{Journal of Multimodal User Interfaces}}, 
+  publisher   = {Springer Berlin Heidelberg},
+  year        = 2015
+}

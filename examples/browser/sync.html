@@ -1,0 +1,165 @@
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+  
+    <title>Synchronize your media files</title>
+
+    <!-- Bootstrap core CSS -->
+    <link href="bootstrap/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+
+    <meta name="theme-color" content="#7952b3">
+
+    <script type="text/javascript" src="wasm/ffmpeg.audio.core/v5/ffmpeg.core.js"></script>
+    <script type="text/javascript" src="wasm/pffft/pffft.simd.js"></script>
+
+    <script type="text/javascript" src="js/ffmpeg.helper.js"></script>
+    <script type="text/javascript" src="js/kdTree.js"></script>
+    <script type="text/javascript" src="js/sync.helper.js"></script>
+    <script type="text/javascript" src="js/chart.js"></script>
+    <script type="text/javascript" src="js/sync.ui.js"></script>
+
+    <script src="bootstrap/js/bootstrap.bundle.min.js" ></script>
+
+    <style type="text/css">
+        #drop_zone{
+          box-sizing: border-box;
+          display: none;
+          position: fixed;
+          width: 100%;
+          height: 100%;
+          left: 0;
+          top: 0;
+          z-index: 99999;
+          background: rgba(0,0,94,.2);
+          box-shadow: 32px 23px 131px -1px rgba(0,0,0,0.75) inset;
+          justify-content: center;
+          align-items: center;
+      }
+
+      body{
+        padding: 0.5rem;
+      }
+      fieldset{
+        margin-bottom: 0.5rem ;
+      }
+
+      .result{
+        display: none;
+      }
+
+      tbody > tr:last-child > td {
+      border-bottom: 0;
+      }
+    </style>
+
+  </head>
+  <body>
+
+    <div id="drop_zone" class="text-muted">
+      <svg xmlns="http://www.w3.org/2000/svg" style="width: 20vh;height: 20vh"   fill="rgb(108, 117, 125)" viewBox="0 0 16 16">
+          <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+          <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+      </svg>
+    </div> 
+
+    <h1 class="h2">Sync your media files</h1>
+
+    <fieldset class="border p-2">
+      <legend class="w-auto float-none small text-muted">1. Select media files</legend>      
+        <input type="file" id="uploader" multiple="true" hidden>
+
+        <div style="display: grid; grid-template-columns: 1fr;grid-gap: 0.7rem;min-width: 150px;text-align: center; "  >
+        <button type="button" id="uploader_button" class="btn btn-lg btn-primary">Select audio files</button>
+        <span class="text-muted">
+        ... or drop your audio files
+        </span>
+
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="rgb(108, 117, 125)"  style="margin: auto" viewBox="0 0 16 16">
+          <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+          <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+        </svg>
+    </fieldset>
+
+    <fieldset class="border p-2">
+      <legend class="w-auto float-none small text-muted">2. Verify timeline</legend>
+        <div class="progress" style="height: 20px;visibility: hidden;margin-bottom: 5px;" id="progress_container">
+           <div class="progress-bar progress-bar-striped" id="progress_bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+        </div>
+
+        <input type="file" id="uploader" multiple="true" hidden>
+
+        <canvas id="myChart" width="400" height="200" style="max-height: 30vh;"></canvas>
+    </fieldset>
+
+    <fieldset class="border p-2 table-responsive result">
+      <legend class="w-auto float-none small text-muted">3. Verify synchronization output</legend>   
+
+        <table class="table table-sm">
+          <tbody id="result_tbody">
+          </tbody>
+        </table>
+    </fieldset>
+
+    <fieldset class="border p-2 result">
+        <legend class="w-auto float-none small text-muted">4. download results</legend>
+
+        <div style="display:grid;grid-gap: 1rem; grid-template-columns: 1fr 1fr 1fr;">
+          <button type="button" class="btn btn-primary" onclick="sync(true);">Download trimmed</button>
+          <button type="button" class="btn btn-primary" onclick="sync(false);" >Download extended</button> 
+          <button type="button" class="btn btn-primary" onclick="downloadInfo(0);">Download JSON</button> 
+        </div>
+    </fieldset>
+
+    <br><br> 
+
+    <h2>More information</h2>
+
+    <dt>What is this for?</dt>
+    <dd>This page aims to synchronize media files which share common audio. <br> It is best explained with an example: Say you have a high quality microhone recording captured at the same time your camera was also recording a low quality audio stream. Now you want to synchronize and use the high quality audio for your video stream. This page allows you to automatically synchronize these recorings.</dd>
+
+    <dt>How do I use this?</dt>
+    <dd>Drop the media files you want to synchronize on the placeholder above. The first media file serves as a reference: the other files attempt to sync with the reference file and modify their signals to match the refence timeline.</dd>
+
+    <dt>What happens if I drop a video file?</dt>
+    <dd>The tool automatically uses the first audio stream in the video container for synchronisation.</dd>
+
+    <dt>I do not want to share any audiovisual material. Can I use this page?</dt>
+    <dd>There is no media uploaded to the server or shared in any way. Transcoding and synchronization happens at client side thanks to the power of WebAssembly.</dd>
+
+    <dt>What is the meaning of the numbers in the table?</dt>
+    The first percentage, next to the file name, is the <b>time-stretching factor</b>. It says how much the reference needs to be stretched (or compressed) in time to match the reference. Note that this percentage is rounded and an indication. However, if it is not 100%, pay attention since that means the downloaded synchroinzed audio will only be synced on one point in the stream (the middle of the matches).  
+    <p>
+    The next number gives an absolute number of matching fingerprints: e.g. 398. Next to it, the duration of the match is given. During this amount of seconds, matching fingerprints are found in the reference. It says something about the overlap of audio fragments.
+    </p>
+    <p>
+    The next percentage, in the bar graph, is the ratio between the number of extracted fingerprints and the matched fingerprints. If one in five extracted fingerprints match with the reference, it is, logically, 20%. 
+    </p>
+
+    <div style="padding: 3rem 2rem">
+      <table class="table table-sm">
+          <tbody id="">
+          <tr><td class="align-middle"><img src="images/audio.svg"></td><td class="align-middle"><tt>filename.wav</tt>  </td><td class="align-middle">101%</td><td class="align-middle">327 matches over 100s</td><td class="align-middle"><div class="progress" style="width:15vw;"><div class="progress-bar bg-success" role="progressbar" id="match_indicator" style="width: 29%" aria-valuenow="29" aria-valuemin="0" aria-valuemax="100">29%</div></div></td><td class="align-middle"><img src="images/flag.svg"> 
+            <img src="images/cross.svg"></td></tr></tbody>
+      </table>
+
+      <p>
+      <b>Example of a match:</b> 327 fingerprints match in 100 seconds which means that this is a robust match. The 101% means that the file is about one or two percent slower than the reference. The 29% again indicates a robust match since about one in three fingerprints match.
+      </p>
+    </div>
+
+
+    <dt>What is the difference between the <b>Download trimmed</b> and <b>Download extended</b>?</dt>
+
+    <dd>The download button creates a wav file with as many channels as input files. The first file, the media file with reference audio file, can be found on channel zero 🤟.  Note that the output is reduced to mono, 16kHz for now. Each channel is synchronized to the first channel. In the <i>trimmed download all channels have the same length as the reference audio</i>. For the extended download all audio is kept, even when it starts before the reference or ends after the reference.</dd>
+
+    <dt>What does the <b>Download JSON</b> buton do?</dt>
+    <dd>
+      It creates a JSON file containing the information on the matching audio. For the reference audio the duration is included. For all other audio the offsets and matching times are included for each matching fingerprint.
+    </dd>
+
+  </body>
+</html>
