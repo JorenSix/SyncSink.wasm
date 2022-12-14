@@ -319,7 +319,7 @@ function addToFileQueue(ev){
     fileList = ev.target.files;
     for (var i = 0; i < fileList.length; i++) {
       console.log(fileList[i].name);
-      addToQueue(files[i]);
+      addToQueue(fileList[i]);
     }
     processTaskQueue(taskQueue,addInterfaceElements,updateInterfaceElements,onDuration,onProgress);
 }
